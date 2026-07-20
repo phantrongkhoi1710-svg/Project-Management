@@ -128,9 +128,12 @@ export function ProjectDetailPage() {
       ) : (
         <ul className="task-list">
           {tasks.map((task) => (
-            <li key={task.id} className="task-item">
+            <li key={task.id} className="task-item" data-status={task.status}>
               <div>
                 <strong>{task.title}</strong>
+                <div>
+                  <span className={`status-chip ${task.status}`}>{task.status}</span>
+                </div>
                 <p className="muted">Người làm: {memberName(task.assignee_id)}</p>
               </div>
               <div className="task-actions">

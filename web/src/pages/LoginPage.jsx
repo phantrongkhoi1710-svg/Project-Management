@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { EmailPicker } from '../components/EmailPicker'
+import directory from '../data/directory.json'
 
 function friendlyError(err) {
   const msg = err?.message || ''
@@ -23,6 +25,10 @@ export function LoginPage() {
   async function onSubmit(e) {
     e.preventDefault()
     setError('')
+    if (!email) {
+      setError('Hãy chọn gmail từ danh sách.')
+      return
+    }
     setSubmitting(true)
     try {
       await signIn(email.trim(), password)
@@ -36,21 +42,14 @@ export function LoginPage() {
   return (
     <div className="login-scene">
       <div className="login-card">
-        <p className="brand">Project Manager</p>
-        <h1>Đăng nhập</h1>
-        <p className="muted">Dùng email và mật khẩu đã được cấp.</p>
+        <p className="brand">Progress Management</p>
+        <h1>Chào mừng trở lại</h1>
+        <p className="muted">Chọn nhân viên theo mã số (tăng dần) hoặc gõ để tìm nhanh, rồi nhập mật khẩu.</p>
 
         <form className="form" onSubmit={onSubmit}>
           <label>
-            Email
-            <input
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="ban@vard.com"
-              required
-            />
+            Nhân viên / Gmail
+            <EmailPicker users={directory} value={email} onChange={setEmail} required />
           </label>
           <label>
             Mật khẩu

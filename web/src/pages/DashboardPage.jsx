@@ -1,113 +1,63 @@
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useProject } from '../hooks/useProject'
 
 export function DashboardPage() {
-  const { user } = useAuth()
-  const [projects, setProjects] = useState([])
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+  const { caps, profile } = useAuth()
+  const { currentProject, sections } = useProject()
 
-  async function loadProjects() {
-    setLoading(true)
-    setError('')
-    const { data, error: err } = await supabase
-      .from('projects')
-      .select('id, name, description, status, created_at')
-      .order('created_at', { ascending: false })
-    if (err) setError(err.message)
-    else setProjects(data || [])
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    loadProjects()
-  }, [])
-
-  async function createProject(e) {
-    e.preventDefault()
-    if (!name.trim() || !user) return
-    setSaving(true)
-    setError('')
-
-    const { data: project, error: createErr } = await supabase
-      .from('projects')
-      .insert({
-        name: name.trim(),
-        description: description.trim() || null,
-        owner_id: user.id,
-      })
-      .select('id')
-      .single()
-
-    if (createErr) {
-      setError(createErr.message)
-      setSaving(false)
-      return
-    }
-
-    const { error: memberErr } = await supabase.from('project_members').insert({
-      project_id: project.id,
-      user_id: user.id,
-      role: 'owner',
-    })
-
-    if (memberErr) {
-      setError(memberErr.message)
-      setSaving(false)
-      return
-    }
-
-    setName('')
-    setDescription('')
-    setSaving(false)
-    await loadProjects()
+  if (!caps.showDashboard) {
+    return (
+      <div className="pm-panel">
+        <h2>Dashboard</h2>
+        <p className="muted">Role của bạn dùng trang Summary thay cho Dashboard tổng.</p>
+        <Link to="/summary">Đi tới Summary →</Link>
+      </div>
+    )
   }
 
   return (
     <div className="stack">
-      <div className="section-head">
-        <h1>Dự án</h1>
-        <p className="muted">Danh sách dự án bạn đang tham gia.</p>
+      <div className={`pm-hero shell-${caps.shell}`}>
+        <p className="eyebrow">{caps.label} workspace</p>
+        <h2>00 Dashboard</h2>
+        <p className="muted">
+          Xin chào {profile?.display_name || 'bạn'}. Ship hiện tại:{' '}
+          <strong>{currentProject?.ship_id || 'chưa chọn'}</strong>
+        </p>
       </div>
 
-      <form className="panel form" onSubmit={createProject}>
-        <h2>Tạo dự án mới</h2>
-        <label>
-          Tên dự án
-          <input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Ví dụ: Website nội bộ" />
-        </label>
-        <label>
-          Mô tả
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Tuỳ chọn" />
-        </label>
-        <button type="submit" className="btn primary" disabled={saving}>
-          {saving ? 'Đang tạo…' : 'Tạo dự án'}
-        </button>
-      </form>
+      <div className="pm-stat-grid">
+        <div className="pm-stat">
+          <span>Sections</span>
+          <strong>{sections.length}</strong>
+        </div>
+        <div className="pm-stat">
+          <span>Department</span>
+          <strong>{currentProject?.department || '—'}</strong>
+        </div>
+        <div className="pm-stat">
+          <span>Status</span>
+          <strong>{currentProject?.status || '—'}</strong>
+        </div>
+      </div>
 
-      {error ? <p className="error">{error}</p> : null}
-
-      {loading ? (
-        <p className="muted">Đang tải…</p>
-      ) : projects.length === 0 ? (
-        <p className="muted">Chưa có dự án nào.</p>
-      ) : (
-        <ul className="project-list">
-          {projects.map((p) => (
-            <li key={p.id}>
-              <Link to={`/projects/${p.id}`} className="project-link">
-                <strong>{p.name}</strong>
-                <span className="muted">{p.description || 'Không có mô tả'}</span>
-              </Link>
+      <div className="pm-panel">
+        <h3>Quick links</h3>
+        <ul className="pm-quick">
+          {sections.slice(0, 4).map((s) => (
+            <li key={s.id}>
+              <Link to={`/sections/${s.id}`}>{s.header_name}</Link>
             </li>
           ))}
+          {caps.showReviewRequests && (
+            <li>
+              <Link to="/reviews">Review Requests</Link>
+            </li>
+          )}
         </ul>
-      )}
+        <p className="muted">Biểu đồ % weighted (3D/ISO/2D/MTO) sẽ bổ sung khi có task data.</p>
+      </div>
     </div>
   )
 }

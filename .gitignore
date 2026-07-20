@@ -8,6 +8,10 @@ web/.env
 web/.env.local
 web/.env.*.local
 
+# Desktop build artifacts (ProgressManagement)
+bin/
+**/ProgressManagement.exe.WebView2/
+
 # OS / IDE
 .DS_Store
 Thumbs.db
