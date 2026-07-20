@@ -8,6 +8,8 @@ import { DashboardPage } from './pages/DashboardPage'
 import { SummaryPage } from './pages/SummaryPage'
 import { SectionTasksPage } from './pages/SectionTasksPage'
 import { ReviewsPage } from './pages/ReviewsPage'
+import { CalendarPage } from './pages/CalendarPage'
+import { UsersPage } from './pages/UsersPage'
 import { ComingSoonPage } from './pages/ComingSoonPage'
 
 function HomeRedirect() {
@@ -26,7 +28,8 @@ function AuthedTree() {
           <Route path="summary" element={<SummaryPage />} />
           <Route path="sections/:sectionId" element={<SectionTasksPage />} />
           <Route path="reviews" element={<ReviewsPage />} />
-          <Route path="calendar" element={<ComingSoonPage title="Calendar" />} />
+          <Route path="calendar" element={<CalendarPage />} />
+          <Route path="users" element={<UsersPage />} />
           <Route path="reports" element={<ComingSoonPage title="Reports" />} />
           <Route path="plan-drawing" element={<ComingSoonPage title="Plan Drawing" />} />
         </Route>

@@ -5,6 +5,7 @@ import { useProject } from '../hooks/useProject'
 import { displaySectionName } from '../lib/roles'
 import { LoadProjectModal } from './LoadProjectModal'
 import { NewProjectModal } from './NewProjectModal'
+import { ExcelToolbar } from './ExcelToolbar'
 
 export function AppShell() {
   const { profile, user, caps, signOut } = useAuth()
@@ -66,8 +67,14 @@ export function AppShell() {
           </NavLink>
 
           {caps.showCalendar && (
-            <NavLink to="/calendar" className="pm-menu-item muted-link">
+            <NavLink to="/calendar" className="pm-menu-item">
               Calendar
+            </NavLink>
+          )}
+
+          {caps.canManageUsers && (
+            <NavLink to="/users" className="pm-menu-item">
+              Users
             </NavLink>
           )}
 
@@ -105,18 +112,9 @@ export function AppShell() {
                   New
                 </button>
               )}
-              {caps.canImportExcel && (
-                <button type="button" className="pm-btn blue" disabled title="Pha 2">
-                  Update
-                </button>
-              )}
-              {caps.canImportExcel && (
-                <button type="button" className="pm-btn blue" disabled title="Pha 2">
-                  Load Assigned & %
-                </button>
-              )}
+              <ExcelToolbar />
               {caps.canManageUsers && (
-                <button type="button" className="pm-btn green" disabled title="Pha 2">
+                <button type="button" className="pm-btn green" onClick={() => navigate('/users')}>
                   Users
                 </button>
               )}

@@ -65,7 +65,7 @@ export function getCapabilities(role) {
     canEditAllTasks: isMgr || isSenior,
     canEditAssignedOnly: isEng,
     canCreateTask: isMgr || isSenior,
-    canImportExcel: isMgr,
+    canImportExcel: isMgr || role === ROLES.DESIGNER,
     percentCap: isEng ? 85 : 100,
     // review
     canSubmitReview: isEng || role === ROLES.DESIGNER,
