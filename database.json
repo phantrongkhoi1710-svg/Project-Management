@@ -1,0 +1,154 @@
+[
+  {
+    "gmail": "dang.duy.hoang@vard.com",
+    "name": "Đặng Duy Hoàng",
+    "employeeId": "4256",
+    "position": "Engineer",
+    "password": "01"
+  },
+  {
+    "gmail": "ho.thanh.tuat@vard.com",
+    "name": "Hồ Thanh Tuất",
+    "employeeId": "2698",
+    "position": "Senior",
+    "password": "01"
+  },
+  {
+    "gmail": "hoang.manh.thang@vard.com",
+    "name": "Hoàng Mạnh Thắng",
+    "employeeId": "4426",
+    "position": "Engineer",
+    "password": "01"
+  },
+  {
+    "gmail": "lam.thi.thuy.trang@vard.com",
+    "name": "Lâm Thị Thùy Trang",
+    "employeeId": "4006",
+    "position": "Engineer",
+    "password": "01"
+  },
+  {
+    "gmail": "le.chau@vard.com",
+    "name": "Lê Châu",
+    "employeeId": "2982",
+    "position": "Engineer",
+    "password": "01"
+  },
+  {
+    "gmail": "le.quang.vinh@vard.com",
+    "name": "Lê Quang Vinh",
+    "employeeId": "3918",
+    "position": "Engineer",
+    "password": "01"
+  },
+  {
+    "gmail": "ngo.thinh.duy@vard.com",
+    "name": "Ngô Thịnh Duy",
+    "position": "Engineer",
+    "password": "01"
+  },
+  {
+    "gmail": "nguyen.danh.duy@vard.com",
+    "name": "Nguyễn Danh Duy",
+    "employeeId": "2511",
+    "position": "Senior",
+    "password": "01"
+  },
+  {
+    "gmail": "nguyen.dong.hop@vard.com",
+    "name": "Nguyễn Đồng Hợp",
+    "employeeId": "3750",
+    "position": "Engineer",
+    "password": "01"
+  },
+  {
+    "gmail": "nguyen.hung.phat@vard.com",
+    "name": "Nguyễn Hưng Phát",
+    "position": "Engineer",
+    "password": "01"
+  },
+  {
+    "gmail": "nguyen.huy.thinh@vard.com",
+    "name": "Nguyễn Huy Thịnh",
+    "employeeId": "2524",
+    "position": "Senior",
+    "password": "01"
+  },
+  {
+    "gmail": "nguyen.quoc.toan@vard.com",
+    "name": "Nguyễn Quốc Toàn",
+    "employeeId": "2272",
+    "position": "Senior",
+    "password": "01"
+  },
+  {
+    "gmail": "nguyen.tran.hung@vard.com",
+    "name": "Nguyễn Trần Hưng",
+    "employeeId": "2107",
+    "position": "Manager",
+    "password": "01"
+  },
+  {
+    "gmail": "nguyen.van.anh@vard.com",
+    "name": "Nguyễn Văn Ánh",
+    "employeeId": "2313",
+    "position": "Senior",
+    "password": "01"
+  },
+  {
+    "gmail": "nguyen.van.huy@vard.com",
+    "name": "Nguyễn Văn Huy",
+    "employeeId": "2995",
+    "position": "Engineer",
+    "password": "01"
+  },
+  {
+    "gmail": "nguyen.van.thao@vard.com",
+    "name": "Nguyễn Văn Thảo",
+    "employeeId": "3436",
+    "position": "Engineer",
+    "password": "01"
+  },
+  {
+    "gmail": "phan.trong.khoi@vard.com",
+    "name": "Phan Trọng Khôi",
+    "position": "Admin",
+    "password": "01"
+  },
+  {
+    "gmail": "to.my.bon@vard.com",
+    "name": "Tô Mỹ Bổn",
+    "employeeId": "3809",
+    "position": "Engineer",
+    "password": "01"
+  },
+  {
+    "gmail": "tran.duc.huy@vard.com",
+    "name": "Trần Đức Huy",
+    "employeeId": "4378",
+    "position": "Engineer",
+    "password": "01"
+  },
+  {
+    "gmail": "tran.quoc@vard.com",
+    "name": "Trần Quốc",
+    "employeeId": "2861",
+    "position": "Engineer",
+    "password": "01"
+  },
+  {
+    "gmail": "tran.thi.ngoc.bich@vard.com",
+    "name": "Trần Thị Ngọc Bích",
+    "employeeId": "4455",
+    "position": "Engineer",
+    "themeColor": "#F4A7BC",
+    "password": "01"
+  },
+  {
+    "gmail": "tran.van.chuyen@vard.com",
+    "name": "Trần Văn Chuyển",
+    "employeeId": "2742",
+    "position": "Engineer",
+    "password": "01"
+  }
+]

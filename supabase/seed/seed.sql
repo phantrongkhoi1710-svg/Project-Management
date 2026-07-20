@@ -1,0 +1,3 @@
+-- Optional seed notes
+-- Users are imported via scripts/import-users.ps1 from database.json
+-- Profiles are created by trigger handle_new_user / backfill in 001_init.sql
