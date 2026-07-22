@@ -44,8 +44,13 @@ export function ProjectProvider({ children }) {
       setSections([])
       return []
     }
-    setSections(data || [])
-    return data || []
+    // Sidebar chỉ hiện section chuẩn (thứ tự bin), bỏ WBS thừa nếu còn sót
+    const canonIndex = new Map(CANONICAL_SECTIONS.map((n, i) => [n, i]))
+    const filtered = (data || [])
+      .filter((s) => canonIndex.has(s.header_name))
+      .sort((a, b) => (canonIndex.get(a.header_name) ?? 99) - (canonIndex.get(b.header_name) ?? 99))
+    setSections(filtered)
+    return filtered
   }, [])
 
   const selectProject = useCallback(
@@ -108,6 +113,26 @@ export function ProjectProvider({ children }) {
     [user, caps.canCreateProject, loadProjects, selectProject]
   )
 
+  const deleteProject = useCallback(
+    async (projectId) => {
+      if (!user || !caps.canDeleteProject) {
+        throw new Error('Bạn không có quyền xóa project.')
+      }
+      const id = projectId || currentProject?.id
+      if (!id) throw new Error('Không có project để xóa.')
+
+      const { error } = await supabase.from('projects').delete().eq('id', id)
+      if (error) throw error
+
+      localStorage.removeItem(STORAGE_KEY)
+      const list = await loadProjects()
+      const next = list[0] || null
+      await selectProject(next)
+      return true
+    },
+    [user, caps.canDeleteProject, currentProject, loadProjects, selectProject]
+  )
+
   useEffect(() => {
     if (!user) {
       setProjects([])
@@ -140,9 +165,21 @@ export function ProjectProvider({ children }) {
       loadProjects,
       selectProject,
       createProject,
+      deleteProject,
       reloadSections: () => loadSections(currentProject?.id),
     }),
-    [projects, currentProject, sections, loading, error, loadProjects, selectProject, createProject, loadSections]
+    [
+      projects,
+      currentProject,
+      sections,
+      loading,
+      error,
+      loadProjects,
+      selectProject,
+      createProject,
+      deleteProject,
+      loadSections,
+    ]
   )
 
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>

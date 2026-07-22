@@ -93,12 +93,18 @@ export const SECTION_MAPPING = {
     '2D & 3D Checking and Coordination',
     '2D and 3D Checking and Coordination',
     'General Arrangement',
+    'General Arranagement', // typo in Engineering Plans
     'Pipe Production Support',
     'Production Supports',
     'Production Support',
   ],
   '3D Equipment Modeling': ['3D Equipment Modeling'],
-  '3D Pipe Drawing': ['Equipment arrangement', 'Equipment Arrangement', 'Pipe Modeling', '3D Pipe Drawing'],
+  '3D Pipe Drawing': [
+    'Equipment arrangement',
+    'Equipment Arrangement',
+    'Pipe Modeling',
+    '3D Pipe Drawing',
+  ],
   'ISO generation': ['Iso generating', 'ISO generating', 'Iso Generating', 'ISO generation'],
   'Pipe 2D drawing': ['Piping 2D drawing', 'Pipe 2D drawing'],
   MTO: ['MTO'],
@@ -106,10 +112,21 @@ export const SECTION_MAPPING = {
 
 export function mapExcelSectionToTarget(headerName) {
   const key = String(headerName || '').trim().toLowerCase()
+  if (!key) return 'General drawing'
   for (const [target, sources] of Object.entries(SECTION_MAPPING)) {
     if (sources.some((s) => s.toLowerCase() === key) || target.toLowerCase() === key) {
       return target
     }
+  }
+  // soft match like desktop canonicalize (fallback)
+  if (key.includes('mto')) return 'MTO'
+  if (key.includes('iso')) return 'ISO generation'
+  if (key.includes('pipe modeling') || key.includes('3d pipe')) return '3D Pipe Drawing'
+  if (key.includes('3d equipment')) return '3D Equipment Modeling'
+  if (key.includes('2d')) return 'Pipe 2D drawing'
+  if (key.includes('arranagement') || key.includes('arrangement')) return 'General drawing'
+  if (key.includes('production support') || key.includes('checking') || key.includes('coordination')) {
+    return 'General drawing'
   }
   return String(headerName || '').trim() || 'General drawing'
 }

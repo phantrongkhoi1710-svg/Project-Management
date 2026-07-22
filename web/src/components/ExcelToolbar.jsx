@@ -1,69 +1,81 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useProject } from '../hooks/useProject'
-import { parsePipingVtWorkbook, parsePicPercentWorkbook, fileToArrayBuffer } from '../lib/excelParse'
-import { applyPipingVtImport, applyPicPercentImport } from '../lib/excelImport'
-import { supabase } from '../lib/supabase'
+import { fileToArrayBuffer } from '../lib/excelParse'
+import { parseEngineeringPlansWorkbook } from '../lib/engineeringPlansParse'
+import { applyEngineeringPlansImport } from '../lib/engineeringPlansImport'
+import { applyPipingVtSectionMapping } from '../lib/pipingVtMapping'
 
 export function ExcelToolbar() {
-  const { caps } = useAuth()
-  const { currentProject, reloadSections } = useProject()
-  const updateRef = useRef(null)
-  const picRef = useRef(null)
+  const { caps, user } = useAuth()
+  const { currentProject, reloadSections, loadProjects, selectProject } = useProject()
+  const plansRef = useRef(null)
   const [busy, setBusy] = useState('')
-  const [message, setMessage] = useState('')
 
   if (!caps.canImportExcel) return null
 
-  async function onUpdateFile(e) {
+  async function onPlansFile(e) {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    if (!currentProject?.id) {
-      setMessage('Hãy Load/New project trước.')
+    if (!user?.id) {
+      window.alert('Cần đăng nhập để import.')
       return
     }
-    setBusy('update')
-    setMessage('')
+    setBusy('import')
     try {
       const buf = await fileToArrayBuffer(file)
-      const sections = parsePipingVtWorkbook(buf)
-      if (!sections.length) {
-        setMessage('Không đọc được section/task từ Excel. Cần cột Activity (+ Drawing/Start/Finish).')
+      const parsed = parseEngineeringPlansWorkbook(buf)
+      if (!parsed.tasks.length) {
+        window.alert('Không thấy task (Vessel số + Activity Name) trong file.')
         return
       }
-      const result = await applyPipingVtImport(currentProject.id, sections)
+
+      const shipGuess = parsed.shipHint || currentProject?.ship_id || ''
+      const useCurrent =
+        currentProject?.id &&
+        (!shipGuess || String(currentProject.ship_id) === String(shipGuess))
+
+      const result = await applyEngineeringPlansImport({
+        parsed,
+        userId: user.id,
+        shipId: shipGuess,
+        projectId: useCurrent ? currentProject.id : undefined,
+        assignEngineers: true,
+      })
+
+      await loadProjects()
+      await selectProject(result.project)
       await reloadSections()
-      setMessage(`Update xong: +${result.inserted} task mới, ${result.updated} cập nhật, ${result.sections} section.`)
     } catch (err) {
-      setMessage(err.message || 'Update Excel thất bại')
+      window.alert(err.message || 'Import Engineering Plans thất bại')
     } finally {
       setBusy('')
     }
   }
 
-  async function onPicFile(e) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
+  async function onMapping() {
     if (!currentProject?.id) {
-      setMessage('Hãy Load/New project trước.')
+      window.alert('Hãy Import Plans / chọn project trước.')
       return
     }
-    setBusy('pic')
-    setMessage('')
+    setBusy('map')
     try {
-      const buf = await fileToArrayBuffer(file)
-      const rows = parsePicPercentWorkbook(buf)
-      if (!rows.length) {
-        setMessage('Không đọc được PIC/% từ Excel.')
+      const result = await applyPipingVtSectionMapping(currentProject.id)
+      await reloadSections()
+      if (!result.total) {
+        window.alert(result.message || 'Không có task Piping VT để mapping.')
         return
       }
-      const { data: profiles } = await supabase.from('profiles').select('id, display_name, email')
-      const result = await applyPicPercentImport(currentProject.id, rows, profiles || [])
-      setMessage(`Load Assigned & %: match ${result.matched}/${result.totalExcel}, cập nhật ${result.updated}.`)
+      const detail = Object.entries(result.byTarget || {})
+        .map(([k, v]) => `${k}: ${v}`)
+        .join('\n')
+      window.alert(
+        `Mapping Piping VT: ${result.moved}/${result.total} task.\n` +
+          `Đã dọn ${result.deletedOtherTasks || 0} task khác team, ${result.deletedSections || 0} section thừa.\n\n${detail}`
+      )
     } catch (err) {
-      setMessage(err.message || 'Load PIC thất bại')
+      window.alert(err.message || 'Mapping thất bại')
     } finally {
       setBusy('')
     }
@@ -71,27 +83,25 @@ export function ExcelToolbar() {
 
   return (
     <>
-      <input ref={updateRef} type="file" accept=".xlsx,.xls" hidden onChange={onUpdateFile} />
-      <input ref={picRef} type="file" accept=".xlsx,.xls" hidden onChange={onPicFile} />
+      <input ref={plansRef} type="file" accept=".xlsx,.xls" hidden onChange={onPlansFile} />
       <button
         type="button"
         className="pm-btn blue"
         disabled={!!busy}
-        onClick={() => updateRef.current?.click()}
-        title="Import task từ Excel (Piping VT)"
+        onClick={() => plansRef.current?.click()}
+        title="Import Engineering Plans (WBS + Resources + Drawing/Activity)"
       >
-        {busy === 'update' ? 'Updating…' : 'Update'}
+        {busy === 'import' ? 'Importing…' : 'Import Plans'}
       </button>
       <button
         type="button"
         className="pm-btn blue"
         disabled={!!busy}
-        onClick={() => picRef.current?.click()}
-        title="Load assigned + % từ Excel"
+        onClick={onMapping}
+        title="Map task Piping VT vào section chuẩn (giống app desktop)"
       >
-        {busy === 'pic' ? 'Loading…' : 'Load Assigned & %'}
+        {busy === 'map' ? 'Mapping…' : 'Mapping'}
       </button>
-      {message ? <span className="pm-excel-msg">{message}</span> : null}
     </>
   )
 }

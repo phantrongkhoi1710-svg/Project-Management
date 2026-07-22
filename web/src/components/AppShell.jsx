@@ -3,21 +3,38 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useProject } from '../hooks/useProject'
 import { displaySectionName } from '../lib/roles'
-import { LoadProjectModal } from './LoadProjectModal'
 import { NewProjectModal } from './NewProjectModal'
 import { ExcelToolbar } from './ExcelToolbar'
 
 export function AppShell() {
   const { profile, user, caps, signOut } = useAuth()
-  const { currentProject, sections } = useProject()
+  const { currentProject, sections, deleteProject } = useProject()
   const navigate = useNavigate()
   const [taskOpen, setTaskOpen] = useState(true)
-  const [showLoad, setShowLoad] = useState(false)
   const [showNew, setShowNew] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const name = profile?.display_name || user?.email || 'User'
   const ship = currentProject?.ship_id || currentProject?.name || '—'
   const dept = currentProject?.department || 'Piping'
+
+  async function onDeleteProject() {
+    if (!currentProject?.id || !caps.canDeleteProject) return
+    const label = currentProject.ship_id || currentProject.name || 'project này'
+    const ok = window.confirm(
+      `Xóa project ${label}?\nToàn bộ section + task sẽ bị xóa. Không hoàn tác được.`
+    )
+    if (!ok) return
+    setDeleting(true)
+    try {
+      await deleteProject(currentProject.id)
+      navigate('/dashboard')
+    } catch (err) {
+      window.alert(err.message || 'Xóa project thất bại')
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <div className={`pm-app shell-${caps.shell}`}>
@@ -102,17 +119,23 @@ export function AppShell() {
           <div className="pm-header-center">
             <h1>Progress Management</h1>
             <div className="pm-actions">
-              {caps.canLoadProject && (
-                <button type="button" className="pm-btn purple" onClick={() => setShowLoad(true)}>
-                  Load
-                </button>
-              )}
               {caps.canCreateProject && (
                 <button type="button" className="pm-btn purple" onClick={() => setShowNew(true)}>
                   New
                 </button>
               )}
               <ExcelToolbar />
+              {caps.canDeleteProject && currentProject?.id ? (
+                <button
+                  type="button"
+                  className="pm-btn danger"
+                  disabled={deleting}
+                  onClick={onDeleteProject}
+                  title="Xóa project hiện tại (section + task)"
+                >
+                  {deleting ? 'Deleting…' : 'Xóa'}
+                </button>
+              ) : null}
               {caps.canManageUsers && (
                 <button type="button" className="pm-btn green" onClick={() => navigate('/users')}>
                   Users
@@ -137,7 +160,6 @@ export function AppShell() {
         </div>
       </div>
 
-      {showLoad && <LoadProjectModal onClose={() => setShowLoad(false)} />}
       {showNew && <NewProjectModal onClose={() => setShowNew(false)} />}
     </div>
   )

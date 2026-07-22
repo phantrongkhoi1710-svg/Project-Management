@@ -2,6 +2,17 @@ import { supabase } from './supabase'
 import { isMtoTask, mapExcelSectionToTarget, normalizeVietnamese } from './progress'
 import { CANONICAL_SECTIONS } from './roles'
 
+function normKey(s) {
+  return normalizeVietnamese(String(s || ''))
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function compactDrawing(s) {
+  return normKey(s).replace(/[\s._]/g, '')
+}
+
 async function ensureSections(projectId, neededNames) {
   const { data: existing, error } = await supabase
     .from('sections')
@@ -32,7 +43,6 @@ async function ensureSections(projectId, neededNames) {
  * Apply Piping VT excel sections into current project (upsert by activity+drawing within target section).
  */
 export async function applyPipingVtImport(projectId, excelSections) {
-  // Remap + extract MTO
   const grouped = new Map()
 
   for (const sec of excelSections) {
@@ -72,16 +82,21 @@ export async function applyPipingVtImport(projectId, excelSections) {
       .eq('section_id', section.id)
     if (error) throw error
 
-    const map = new Map()
+    const byActDraw = new Map()
+    const byAct = new Map()
+    const byDraw = new Map()
     ;(existingTasks || []).forEach((t) => {
-      map.set(`${(t.activity || '').trim()}|||${(t.drawing_id || '').trim()}`, t)
-      map.set(`${(t.activity || '').trim()}|||`, t)
+      const a = normKey(t.activity)
+      const d = compactDrawing(t.drawing_id)
+      if (a && d) byActDraw.set(`${a}|||${d}`, t)
+      if (a) byAct.set(a, t)
+      if (d) byDraw.set(d, t)
     })
 
     for (const act of activities) {
-      const keyDraw = `${act.activity}|||${act.drawing_id || ''}`
-      const keyPlain = `${act.activity}|||`
-      const found = map.get(keyDraw) || map.get(keyPlain)
+      const a = normKey(act.activity)
+      const d = compactDrawing(act.drawing_id)
+      const found = (a && d && byActDraw.get(`${a}|||${d}`)) || (d && byDraw.get(d)) || (a && byAct.get(a))
 
       if (found) {
         const { error: upErr } = await supabase
@@ -121,53 +136,120 @@ export async function applyPipingVtImport(projectId, excelSections) {
   return { inserted, updated, sections: grouped.size }
 }
 
+function buildTaskIndexes(tasks) {
+  const byActDraw = new Map()
+  const byAct = new Map()
+  const byDraw = new Map()
+  const byZoneAct = new Map()
+
+  ;(tasks || []).forEach((t) => {
+    const a = normKey(t.activity)
+    const d = compactDrawing(t.drawing_id)
+    const z = normKey(t.zone)
+    if (a && d) byActDraw.set(`${a}|||${d}`, t)
+    if (a && !byAct.has(a)) byAct.set(a, t)
+    if (d && !byDraw.has(d)) byDraw.set(d, t)
+    if (z && a) byZoneAct.set(`${z}|||${a}`, t)
+  })
+
+  return { byActDraw, byAct, byDraw, byZoneAct }
+}
+
+function findDbTask(indexes, row) {
+  const a = normKey(row.activity)
+  const d = compactDrawing(row.drawingId)
+  const z = normKey(row.zone)
+
+  if (d && indexes.byDraw.has(d)) return { task: indexes.byDraw.get(d), how: 'drawing' }
+  if (a && d && indexes.byActDraw.has(`${a}|||${d}`)) {
+    return { task: indexes.byActDraw.get(`${a}|||${d}`), how: 'activity+drawing' }
+  }
+  if (z && a && indexes.byZoneAct.has(`${z}|||${a}`)) {
+    return { task: indexes.byZoneAct.get(`${z}|||${a}`), how: 'zone+activity' }
+  }
+  if (a && indexes.byAct.has(a)) return { task: indexes.byAct.get(a), how: 'activity' }
+
+  if (a) {
+    for (const [key, task] of indexes.byAct.entries()) {
+      if (key.includes(a) || a.includes(key)) {
+        if (Math.min(key.length, a.length) >= 8) return { task, how: 'activity-fuzzy' }
+      }
+    }
+  }
+  return null
+}
+
 /**
  * Update assignee + % from PIC excel rows.
  */
 export async function applyPicPercentImport(projectId, excelTasks, profiles) {
   const { data: tasks, error } = await supabase
     .from('tasks')
-    .select('id, activity, drawing_id, assignee_id, percent_complete')
+    .select('id, activity, drawing_id, zone, assignee_id, percent_complete')
     .eq('project_id', projectId)
   if (error) throw error
 
-  const map = new Map()
-  ;(tasks || []).forEach((t) => {
-    const a = (t.activity || '').trim()
-    const d = (t.drawing_id || '').trim()
-    if (a) {
-      if (d) map.set(`${a}|||${d}`, t)
-      map.set(`${a}|||`, t)
-    }
-  })
+  const dbTasks = tasks || []
+  const indexes = buildTaskIndexes(dbTasks)
 
   const profileByNorm = new Map()
   ;(profiles || []).forEach((p) => {
-    profileByNorm.set(normalizeVietnamese(p.display_name || '').toLowerCase(), p)
-    if (p.email) profileByNorm.set(normalizeVietnamese(p.email.split('@')[0]).toLowerCase(), p)
+    const name = normalizeVietnamese(p.display_name || '').toLowerCase()
+    if (name) profileByNorm.set(name, p)
+    // also "Nguyen Tran Hung" without extra spaces
+    if (name) profileByNorm.set(name.replace(/\s+/g, ' '), p)
+    if (p.email) {
+      const local = normalizeVietnamese(p.email.split('@')[0]).toLowerCase().replace(/[._]/g, ' ')
+      profileByNorm.set(local, p)
+    }
   })
 
   let matched = 0
   let updated = 0
+  let matchedBy = {
+    drawing: 0,
+    'activity+drawing': 0,
+    'zone+activity': 0,
+    activity: 0,
+    'activity-fuzzy': 0,
+  }
+  const unmatchedSamples = []
 
   for (const row of excelTasks) {
-    const activity = (row.activity || '').trim()
-    if (!activity) continue
-    const drawingId = (row.drawingId || '').trim()
-    let task = drawingId ? map.get(`${activity}|||${drawingId}`) : null
-    if (!task) task = map.get(`${activity}|||`)
-    if (!task) continue
+    const hit = findDbTask(indexes, row)
+    if (!hit) {
+      if (unmatchedSamples.length < 5) {
+        unmatchedSamples.push({
+          activity: row.activity || '',
+          drawingId: row.drawingId || '',
+          sheet: row.sheetName || '',
+        })
+      }
+      continue
+    }
+
     matched += 1
+    matchedBy[hit.how] = (matchedBy[hit.how] || 0) + 1
+    const task = hit.task
 
     const patch = {}
-    const picNorm = (row.picFullNameNoDiacritics || normalizeVietnamese(row.picRaw || '')).toLowerCase()
+    const picNorm = normKey(row.picFullNameNoDiacritics || row.picRaw || '')
     if (picNorm) {
-      const profile = profileByNorm.get(picNorm)
+      let profile = profileByNorm.get(picNorm)
+      if (!profile) {
+        // try partial name match
+        for (const [key, p] of profileByNorm.entries()) {
+          if (key.includes(picNorm) || picNorm.includes(key)) {
+            profile = p
+            break
+          }
+        }
+      }
       if (profile && profile.id !== task.assignee_id) {
         patch.assignee_id = profile.id
       }
     }
-    if (row.percentComplete > 0 && Math.abs(row.percentComplete - (task.percent_complete || 0)) > 0.01) {
+    if (row.percentComplete > 0 && Math.abs(row.percentComplete - (Number(task.percent_complete) || 0)) > 0.01) {
       patch.percent_complete = row.percentComplete
     }
 
@@ -175,8 +257,22 @@ export async function applyPicPercentImport(projectId, excelTasks, profiles) {
       const { error: upErr } = await supabase.from('tasks').update(patch).eq('id', task.id)
       if (upErr) throw upErr
       updated += 1
+      // keep indexes in sync for assignee (not needed for further identity match)
+      Object.assign(task, patch)
     }
   }
 
-  return { matched, updated, totalExcel: excelTasks.length }
+  return {
+    matched,
+    updated,
+    totalExcel: excelTasks.length,
+    dbTasks: dbTasks.length,
+    matchedBy,
+    unmatchedSamples,
+    dbSamples: dbTasks.slice(0, 5).map((t) => ({
+      activity: t.activity || '',
+      drawingId: t.drawing_id || '',
+      zone: t.zone || '',
+    })),
+  }
 }
